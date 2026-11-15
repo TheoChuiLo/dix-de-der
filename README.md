@@ -19,7 +19,7 @@ Les mises à jour se téléchargent en arrière-plan : ouvrir l'application, la 
 
 ## Fonctionnalités
 
-- Quatre jeux sur l'accueil : Coinche (avec annonces), Contrée (sans annonces), Belote classique et « Mes règles », qui restaure les dernières variantes réglées à la main.
+- Quatre jeux sur l'accueil : Coinche (avec annonces et enchères « sans atout » et « tout atout »), Contrée (sans annonces, quatre couleurs seulement), Belote classique et « Mes règles », qui restaure les dernières variantes réglées à la main.
 - Saisie guidée de chaque donne : preneur, contrat, couleur, puis résultat. Une touche par équipe pour la belote, touches Capot et Générale, coinche et surcoinche, annonces.
 - Variantes de règles modifiables avant ou pendant la partie. Les scores sont recalculés aussitôt.
 - Récap des règles généré à partir des variantes actives, avec des exemples chiffrés calculés par le moteur de comptage.
@@ -73,7 +73,7 @@ Le code, les commentaires et les messages de commit sont en anglais. Seuls les t
 
 ## Jeux et variantes
 
-Les jeux sont déclarés dans `GAMES` (`js/app.js`). La coinche et la contrée partagent le même moteur de comptage et ne diffèrent que par leurs règles de base : la contrée désactive les annonces.
+Les jeux sont déclarés dans `GAMES` (`js/app.js`). La coinche et la contrée partagent le même moteur de comptage et ne diffèrent que par leurs règles de base : la contrée désactive les annonces ainsi que les enchères « sans atout » et « tout atout ».
 
 Toutes les variantes sont dans `DEFAULT_RULES` (`js/scoring.js`) :
 

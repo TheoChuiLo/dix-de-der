@@ -28,8 +28,8 @@ const TEAM_DEFAULTS = { us: 'Nous', them: 'Eux' };
 // Games offered on the home screen. Coinche and contree share the coinche scoring engine
 // and only differ by their default rules.
 const GAMES = {
-  coinche: { label: 'Coinche', tile: 'Coinche', hint: 'Avec annonces', mode: 'coinche', rules: {} },
-  contree: { label: 'Contrée', tile: 'Contrée', hint: 'Sans annonces', mode: 'coinche', rules: { announces: false } },
+  coinche: { label: 'Coinche', tile: 'Coinche', hint: 'Annonces, SA et TA', mode: 'coinche', rules: {} },
+  contree: { label: 'Contrée', tile: 'Contrée', hint: 'Ni annonces ni SA/TA', mode: 'coinche', rules: { announces: false, noTrump: false } },
   classic: { label: 'Belote classique', tile: 'Belote', hint: 'Sans enchères', mode: 'classic', rules: {} },
 };
 // Games saved before the `game` field existed only carry a scoring mode.
@@ -175,11 +175,14 @@ function newSetupDraft() {
   };
   const last = data.prefs.lastSetup;
   if (!last) return base;
+  const game = gameOf(last);
+  // A plain game follows its current defaults, so a change to a preset reaches returning players.
+  const plain = Boolean(last.game) && !last.custom;
   return {
     ...base,
     ...structuredClone(last),
-    game: gameOf(last),
-    rules: { ...DEFAULT_RULES, ...last.rules },
+    game,
+    rules: plain ? presetRules(game, last.rules?.target ?? DEFAULT_RULES.target) : { ...DEFAULT_RULES, ...last.rules },
   };
 }
 

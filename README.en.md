@@ -19,7 +19,7 @@ Updates are downloaded in the background: open the app, close it and reopen it t
 
 ## Features
 
-- Four games on the home screen: Coinche (with announces), Contree (without announces), classic Belote, and "Mes règles", which restores the last set of variants tuned by hand.
+- Four games on the home screen: Coinche (with announces, no-trump and all-trump bids), Contree (without announces, no-trump or all-trump), classic Belote, and "Mes règles", which restores the last set of variants tuned by hand.
 - Guided deal entry: taker, contract, suit, then the result. One tap per team for the belote, Capot and Generale keys, coinche and surcoinche, announces.
 - Rule variants, changeable before or during a game. Scores are recomputed at once.
 - Rules recap generated from the active variants, with worked examples computed by the scoring engine.
@@ -73,7 +73,7 @@ Code, comments and commit messages are in English. Only the texts shown to playe
 
 ## Games and rule variants
 
-The games are declared in `GAMES` (`js/app.js`). Coinche and contree share the same scoring engine and only differ by their default rules: contree turns the announces off.
+The games are declared in `GAMES` (`js/app.js`). Coinche and contree share the same scoring engine and only differ by their default rules: contree turns off the announces and the no-trump and all-trump bids.
 
 Every variant lives in `DEFAULT_RULES` (`js/scoring.js`):
 
