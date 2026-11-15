@@ -3,6 +3,7 @@
 
 import {
   ANNOUNCE_POINTS,
+  BELOTE_BONUS,
   DEFAULT_RULES,
   EXTENDED_CONTRACTS,
   NUMERIC_CONTRACTS,
@@ -504,7 +505,7 @@ function dealRow(game, row) {
   const details = [];
   if (game.mode === 'coinche') details.push(esc(playerName(game, deal.taker)));
   details.push(dealStatus(game, row));
-  if (deal.tricks && deal.tricks !== 'normal' && !isSpecialContract(deal.contract)) details.push('Capot');
+  if (deal.tricks && deal.tricks !== 'normal' && !isSpecialContract(deal.contract)) details.push(allTricksLabel(deal));
   if (deal.belote) details.push('Belote');
   const points = (team) => `<span class="deal-pts ${team}">${row.score[team] ? `+${row.score[team]}` : '0'}</span>`;
   return `
@@ -899,7 +900,7 @@ function openWizard(editId = null) {
     step: existing ? steps.length - 1 : 0,
     side: 'taker',
     digits: draft.takerPoints != null ? String(draft.takerPoints) : '',
-    picker: null, // 'coinche' | 'belote' | 'announces'
+    picker: null, // 'coinche' | 'announces'
     announceTeam: 'us',
   };
   render();
@@ -968,24 +969,40 @@ function previewText(game, draft) {
   return `${esc(teamName(game, 'us'))} +${result.us} · ${esc(teamName(game, 'them'))} +${result.them}`;
 }
 
+// "All tricks" label: a generale when a single player took them all, a capot otherwise.
+const allTricksLabel = (deal) => (deal.solo ? 'Générale' : 'Capot');
+
+// One-tap belote toggle for a team. `named` adds the team name when no points box sits above it.
+function beloteToggle(game, draft, team, named = false) {
+  const on = draft.belote === team;
+  return `
+    <button class="belote-toggle ${team}${on ? ' active' : ''}" data-action="toggle-belote" data-value="${team}" aria-pressed="${on}">
+      ${on ? icon('check') : ''}<strong>Belote${named ? ` ${esc(teamName(game, team))}` : ''}</strong><small>+${BELOTE_BONUS}</small>
+    </button>`;
+}
+
 function pointsBox(game, w, team) {
   const draft = w.draft;
   const side = team === teamOf(draft.taker) ? 'taker' : 'defense';
+  const word = allTricksLabel(draft);
   let value = null;
-  if (draft.tricks === 'takerAll') value = side === 'taker' ? 'Capot' : 0;
-  else if (draft.tricks === 'defenseAll') value = side === 'defense' ? 'Capot' : 0;
+  if (draft.tricks === 'takerAll') value = side === 'taker' ? word : 0;
+  else if (draft.tricks === 'defenseAll') value = side === 'defense' ? word : 0;
   else if (draft.takerPoints != null) value = side === 'taker' ? draft.takerPoints : TOTAL_POINTS - draft.takerPoints;
   return `
-    <button class="points-box ${team}${w.side === side ? ' active' : ''}" data-action="pick-side" data-side="${side}" aria-pressed="${w.side === side}">
-      <span class="points-label">${esc(teamName(game, team))}<em>${side === 'taker' ? 'preneurs' : 'défense'}</em></span>
-      <span class="points-value${value == null ? ' placeholder' : ''}${value === 'Capot' ? ' word' : ''}">${value ?? '?'}</span>
-    </button>`;
+    <div class="points-col">
+      <button class="points-box ${team}${w.side === side ? ' active' : ''}" data-action="pick-side" data-side="${side}" aria-pressed="${w.side === side}">
+        <span class="points-label">${esc(teamName(game, team))}<em>${side === 'taker' ? 'preneurs' : 'défense'}</em></span>
+        <span class="points-value${value == null ? ' placeholder' : ''}${value === word ? ' word' : ''}">${value ?? '?'}</span>
+      </button>
+      ${beloteToggle(game, draft, team)}
+    </div>`;
 }
 
 function verdictHtml(game, draft) {
   const complete = draft.tricks !== 'normal' || draft.takerPoints != null;
   if (!complete) {
-    return `<p class="verdict idle">Tapez les points des plis, dix de der inclus. L'autre équipe se calcule toute seule.</p>`;
+    return `<p class="verdict idle">Tapez les points des plis, der inclus.<span class="more"> L'autre équipe se calcule toute seule.</span></p>`;
   }
   const result = scoreDeal(draft, game.mode, game.rules);
   const coinche = game.mode === 'coinche';
@@ -1000,13 +1017,12 @@ function stepResult(game, w) {
   const coinche = game.mode === 'coinche';
   const chips = [];
   if (coinche) chips.push(optionChip('coinche', 'Coinche', multiplierLabel(draft.multiplier), draft.multiplier > 1));
-  chips.push(optionChip('belote', 'Belote', draft.belote ? esc(teamName(game, draft.belote)) : 'Non', Boolean(draft.belote)));
   if (game.rules.announces) {
     const totals = announceTotals(draft);
     const parts = TEAMS.filter((team) => totals[team]).map((team) => `${esc(teamName(game, team))} ${totals[team]}`);
     chips.push(optionChip('announces', 'Annonces', parts.join(' · ') || 'Aucune', parts.length > 0));
   }
-  const options = `<div class="option-chips">${chips.join('')}</div>`;
+  const options = chips.length ? `<div class="option-chips">${chips.join('')}</div>` : '';
 
   if (outcomeOnly(game, draft)) {
     const special = isSpecialContract(draft.contract);
@@ -1014,6 +1030,7 @@ function stepResult(game, w) {
     const failed = { ...draft, takerPoints: null, tricks: 'normal', forcedOutcome: 'failed' };
     return `
       ${options}
+      <div class="belote-row">${TEAMS.map((team) => beloteToggle(game, draft, team, true)).join('')}</div>
       <div class="outcome-grid">
         <button class="outcome made" data-action="save-outcome" data-value="made">
           ${icon('check')}<strong>Réussi</strong><small>${previewText(game, made)}</small>
@@ -1026,20 +1043,24 @@ function stepResult(game, w) {
 
   const complete = draft.tricks !== 'normal' || draft.takerPoints != null;
   const key = (digit) => `<button class="key" data-action="key" data-value="${digit}">${digit}</button>`;
+  const allTricks = draft.tricks !== 'normal';
+  // An unannounced generale is only offered where the generale exists as a contract.
+  const soloKey = coinche && game.rules.generale;
   return `
     ${options}
     <div class="points-pair">${pointsBox(game, w, 'us')}${pointsBox(game, w, 'them')}</div>
     ${verdictHtml(game, draft)}
-    <div class="keypad">
+    <div class="keypad${soloKey ? ' four-last' : ''}">
       ${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(key).join('')}
-      <button class="key word${draft.tricks !== 'normal' ? ' active' : ''}" data-action="key-capot">Capot</button>
+      <button class="key word${allTricks && !draft.solo ? ' active' : ''}" data-action="key-capot">Capot</button>
+      ${soloKey ? `<button class="key word${allTricks && draft.solo ? ' active' : ''}" data-action="key-capot" data-solo="1">Générale</button>` : ''}
       ${key(0)}
       <button class="key word" data-action="key-back" aria-label="Effacer">⌫</button>
     </div>
     <button class="btn primary big wide" data-action="save-deal" ${complete ? '' : 'disabled'}>${icon('check')} Valider la donne</button>`;
 }
 
-// Bottom sheets opened from the result step: coinche level, belote holder, announces.
+// Bottom sheets opened from the result step: coinche level, announces.
 function pickerSheet(game, w) {
   const draft = w.draft;
   const choice = (action, value, selected, title, text = '', cls = '') => `
@@ -1061,14 +1082,6 @@ function pickerSheet(game, w) {
         ${choice('set-multiplier', 1, draft.multiplier === 1, 'Pas de coinche', preview(1))}
         ${choice('set-multiplier', 2, draft.multiplier === 2, 'Coinché ×2', preview(2))}
         ${game.rules.surcoinche || draft.multiplier === 4 ? choice('set-multiplier', 4, draft.multiplier === 4, 'Surcoinché ×4', `Coinche sur coinche. ${preview(4)}`) : ''}
-      </div>`;
-  } else if (w.picker === 'belote') {
-    content = `
-      <h2>Qui a la belote ?</h2>
-      <p class="hint">Le roi et la dame d'atout dans la même main : 20 points.</p>
-      <div class="choice-list">
-        ${choice('set-belote', '', draft.belote === null, 'Personne')}
-        ${TEAMS.map((team) => choice('set-belote', team, draft.belote === team, esc(teamName(game, team)), '+20 points', team)).join('')}
       </div>`;
   } else {
     const list = draft.announces;
@@ -1226,7 +1239,7 @@ function sheetDeal() {
   const { deal } = row;
   const totals = announceTotals(deal);
   const facts = [`Preneur : ${esc(playerName(game, deal.taker))} (${esc(teamName(game, row.takerTeam))})`, `Donneur : ${esc(playerName(game, row.dealer))}`];
-  if (deal.tricks === 'takerAll' || deal.tricks === 'defenseAll') facts.push('Capot');
+  if (deal.tricks === 'takerAll' || deal.tricks === 'defenseAll') facts.push(allTricksLabel(deal));
   else if (deal.takerPoints != null) facts.push(`Plis : ${deal.takerPoints} à ${TOTAL_POINTS - deal.takerPoints}`);
   if (deal.belote) facts.push(`Belote : ${esc(teamName(game, deal.belote))}`);
   if (game.rules.announces && (totals.us || totals.them)) {
@@ -1616,9 +1629,9 @@ const actions = {
     ui.wizard.picker = null;
     render();
   },
-  'set-belote'(d) {
-    ui.wizard.draft.belote = d.value || null;
-    ui.wizard.picker = null;
+  'toggle-belote'(d) {
+    const { draft } = ui.wizard;
+    draft.belote = draft.belote === d.value ? null : d.value;
     render();
   },
   'announce-team'(d) {
@@ -1650,20 +1663,27 @@ const actions = {
     }
     w.digits = next;
     w.draft.tricks = 'normal';
+    w.draft.solo = false;
     applyDigits(w);
     render();
   },
   'key-back'() {
     const w = ui.wizard;
-    if (w.draft.tricks !== 'normal') w.draft.tricks = 'normal';
-    else w.digits = w.digits.slice(0, -1);
+    if (w.draft.tricks !== 'normal') {
+      w.draft.tricks = 'normal';
+      w.draft.solo = false;
+    } else w.digits = w.digits.slice(0, -1);
     applyDigits(w);
     render();
   },
-  'key-capot'() {
+  // Capot and Generale keys: all tricks for the selected side. Pressing the active key again clears it.
+  'key-capot'(d) {
     const w = ui.wizard;
     const target = w.side === 'taker' ? 'takerAll' : 'defenseAll';
-    w.draft.tricks = w.draft.tricks === target ? 'normal' : target;
+    const solo = d.solo === '1';
+    const same = w.draft.tricks === target && Boolean(w.draft.solo) === solo;
+    w.draft.tricks = same ? 'normal' : target;
+    w.draft.solo = !same && solo;
     w.digits = '';
     w.draft.takerPoints = null;
     render();
@@ -1678,7 +1698,8 @@ const actions = {
     const { draft } = ui.wizard;
     draft.takerPoints = null;
     draft.forcedOutcome = d.value;
-    draft.tricks = d.value === 'made' && isSpecialContract(draft.contract) ? 'takerAll' : 'normal';
+    draft.solo = false;
+    draft.tricks =d.value === 'made' && isSpecialContract(draft.contract) ? 'takerAll' : 'normal';
     saveDraft();
   },
 };
