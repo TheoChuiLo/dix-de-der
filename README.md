@@ -34,7 +34,11 @@ Covers the scoring engine (`js/scoring.js`) and the statistics (`js/stats.js`).
 
 ## Scoring rules
 
-Coinche / contree (options are chosen when starting a game and can be changed from the menu):
+Every variant lives in `DEFAULT_RULES` (`js/scoring.js`) and can be changed when starting a game or from the menu; scores are recomputed at once. The in-app rules recap is generated from the active variants, with examples computed by the scoring engine. Available variants: counting mode, rounding, what the defense scores on a failed contract (160 + contract or 160 only), whether coinche multiplies the contract or the whole total, winner takes all on coinched deals, surcoinche, belote and announces counting toward the contract, no-trump/all-trump bids, generale, 170 and 180 contracts, and the classic belote tie rule.
+
+Colour themes are CSS variable sets in `css/styles.css` (`[data-theme='...']`), listed in `THEMES` in `js/app.js`.
+
+Default rules for coinche / contree:
 
 - "Points + contract": a made contract scores the contract plus the points won, the defense scores its own points. A failed contract gives 160 plus the contract to the defense.
 - "Contract only": the contract goes to the takers when made, to the defense when failed.

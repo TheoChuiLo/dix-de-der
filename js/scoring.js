@@ -7,7 +7,31 @@ export const CLASSIC_CAPOT_POINTS = 252;
 export const BELOTE_BONUS = 20;
 
 export const NUMERIC_CONTRACTS = [80, 90, 100, 110, 120, 130, 140, 150, 160];
+export const EXTENDED_CONTRACTS = [170, 180];
 export const SPECIAL_CONTRACTS = { capot: 250, generale: 500 };
+
+// Every rule variant, with the most common table rules as defaults.
+export const DEFAULT_RULES = {
+  target: 1000,
+  // Coinche
+  counting: 'points', // 'points' = contract + points won, 'contract' = contract only
+  rounding: true, // round card points to the nearest ten
+  failedScore: 'both', // defense scores 'both' = 160 + contract, 'points' = 160 only
+  coincheScope: 'contract', // multiplier applies to the 'contract' or to the 'total'
+  coincheWinnerTakesAll: true, // coinched deal: the winner takes every card point
+  surcoinche: true, // x4 offered
+  beloteInContract: true, // belote counts toward making the contract
+  announcesInContract: true, // takers' announces count toward making the contract
+  noTrump: true, // "sans atout" and "tout atout" offered
+  generale: true, // "generale" contract offered
+  extendedContracts: false, // 170 and 180 offered
+  // Both games
+  announces: true,
+  // Classic belote
+  litige: true, // a tie holds the taker's points for the next deal's winner
+};
+
+export const withDefaults = (rules) => ({ ...DEFAULT_RULES, ...rules });
 
 export const ANNOUNCE_POINTS = {
   tierce: 20,
@@ -59,9 +83,11 @@ function scoreCoinche(deal, rules) {
   const defenseBelote = deal.belote === defenseTeam ? BELOTE_BONUS : 0;
   const cards = resolveCards(deal, COINCHE_CAPOT_POINTS);
 
+  const contractHelp = (rules.beloteInContract ? takerBelote : 0) + (rules.announcesInContract ? takerAnnounces : 0);
+
   let made;
   if (isSpecialContract(deal.contract)) made = deal.tricks === 'takerAll';
-  else if (cards) made = cards.taker + takerBelote + takerAnnounces >= value;
+  else if (cards) made = cards.taker + contractHelp >= value;
   else made = deal.forcedOutcome === 'made';
 
   let taker;
@@ -99,14 +125,23 @@ function scoreCoinche(deal, rules) {
       taker = value + takerCards + takerBelote + takerAnnounces;
       defense = defenseCards + defenseBelote + defenseAnnounces;
     } else if (made) {
-      // Coinched and made: the taker collects everything.
+      // Coinched and made: depending on the variant the taker collects every
+      // card point, or each side keeps its own.
+      const takesAll = rules.coincheWinnerTakesAll;
       const pot = deal.tricks === 'takerAll' ? COINCHE_CAPOT_POINTS : allPoints;
-      taker = value * multiplier + pot + takerBelote + takerAnnounces + defenseAnnounces;
-      defense = defenseBelote;
+      const pointsPart = takesAll ? pot : takerCards;
+      const base = rules.coincheScope === 'total' ? (value + pointsPart) * multiplier : value * multiplier + pointsPart;
+      taker = base + takerBelote + takerAnnounces + (takesAll ? defenseAnnounces : 0);
+      defense = defenseBelote + (takesAll ? 0 : defenseCards + defenseAnnounces);
     } else {
       const pot = deal.tricks === 'defenseAll' ? COINCHE_CAPOT_POINTS : allPoints;
+      const contractPart = rules.failedScore === 'points' ? 0 : value;
+      const base =
+        rules.coincheScope === 'total' || contractPart === 0
+          ? (contractPart + pot) * multiplier
+          : contractPart * multiplier + pot;
       taker = takerBelote;
-      defense = value * multiplier + pot + defenseBelote + defenseAnnounces + takerAnnounces;
+      defense = base + defenseBelote + defenseAnnounces + takerAnnounces;
     }
   }
 
@@ -143,7 +178,7 @@ function scoreClassic(deal, rules) {
     made = true;
     taker = takerTotal;
     defense = defenseTotal;
-  } else if (takerTotal === defenseTotal) {
+  } else if (takerTotal === defenseTotal && rules.litige) {
     // Tie: the defense scores, the taker's points go to the winner of the next deal.
     litige = true;
     pending = cards.taker + takerAnnounces;
@@ -160,7 +195,8 @@ function scoreClassic(deal, rules) {
 }
 
 export function scoreDeal(deal, mode, rules) {
-  return mode === 'coinche' ? scoreCoinche(deal, rules) : scoreClassic(deal, rules);
+  const fullRules = withDefaults(rules);
+  return mode === 'coinche' ? scoreCoinche(deal, fullRules) : scoreClassic(deal, fullRules);
 }
 
 // Replays every deal of a game and returns per-deal rows plus running totals.

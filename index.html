@@ -5,7 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>Dix de Der</title>
     <meta name="description" content="Compteur de points pour la belote, la coinche et la contrée.">
-    <meta name="theme-color" content="#0f4a30">
+    <meta name="theme-color" content="#0e1016">
+    <script>
+      // Apply the saved colour theme before first paint to avoid a flash.
+      try {
+        var saved = JSON.parse(localStorage.getItem('dix-de-der:v1'));
+        document.documentElement.dataset.theme = (saved && saved.prefs && saved.prefs.theme) || 'nuit';
+      } catch (error) {
+        document.documentElement.dataset.theme = 'nuit';
+      }
+    </script>
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">

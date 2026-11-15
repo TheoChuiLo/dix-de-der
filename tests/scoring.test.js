@@ -133,6 +133,47 @@ test('coinche: contract-only counting', () => {
   assert.equal(failed.them, 100);
 });
 
+test('variant: a failed contract can give 160 only', () => {
+  const rules = { ...pointsRules, failedScore: 'points' };
+  const plain = scoreDeal(coinche({ takerPoints: 92 }), 'coinche', rules);
+  assert.equal(plain.them, 160);
+  const coinched = scoreDeal(coinche({ takerPoints: 92, multiplier: 2 }), 'coinche', rules);
+  assert.equal(coinched.them, 320);
+});
+
+test('variant: coinche can multiply the whole total', () => {
+  const rules = { ...pointsRules, coincheScope: 'total' };
+  const made = scoreDeal(coinche({ takerPoints: 120, multiplier: 2 }), 'coinche', rules);
+  assert.equal(made.us, (100 + 160) * 2);
+  const failed = scoreDeal(coinche({ takerPoints: 60, multiplier: 4 }), 'coinche', rules);
+  assert.equal(failed.them, (100 + 160) * 4);
+});
+
+test('variant: coinched and made without winner takes all', () => {
+  const rules = { ...pointsRules, coincheWinnerTakesAll: false };
+  const announces = [{ team: 'them', kind: 'tierce' }];
+  const made = scoreDeal(coinche({ takerPoints: 120, multiplier: 2, announces }), 'coinche', rules);
+  assert.equal(made.us, 200 + 120);
+  assert.equal(made.them, 40 + 20);
+});
+
+test('variant: belote and announces can be excluded from the contract', () => {
+  const belote = scoreDeal(coinche({ takerPoints: 82, belote: 'us' }), 'coinche', { ...pointsRules, beloteInContract: false });
+  assert.equal(belote.made, false);
+  assert.equal(belote.us, 20);
+
+  const announces = [{ team: 'us', kind: 'tierce' }];
+  const withHelp = scoreDeal(coinche({ takerPoints: 82, announces }), 'coinche', pointsRules);
+  assert.equal(withHelp.made, true);
+  const withoutHelp = scoreDeal(coinche({ takerPoints: 82, announces }), 'coinche', { ...pointsRules, announcesInContract: false });
+  assert.equal(withoutHelp.made, false);
+});
+
+test('variant: classic tie without litige is a failed deal', () => {
+  const result = scoreDeal(classic({ takerPoints: 81 }), 'classic', { ...classicRules, litige: false });
+  assert.deepEqual([result.made, result.litige, result.us, result.them], [false, false, 0, 162]);
+});
+
 test('classic: made, failed and capot', () => {
   const made = scoreDeal(classic({ takerPoints: 90 }), 'classic', classicRules);
   assert.deepEqual([made.made, made.us, made.them], [true, 90, 72]);
