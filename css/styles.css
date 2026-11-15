@@ -750,6 +750,10 @@ input:focus {
   color: var(--bg);
 }
 
+.seg.compact .seg-btn {
+  min-height: 44px;
+}
+
 .seg-btn.us.active,
 .seg-btn.them.active {
   background: var(--team);

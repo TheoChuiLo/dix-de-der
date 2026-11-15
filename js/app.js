@@ -103,6 +103,7 @@ const ui = {
   wizard: null,
   confirm: null,
   statsGame: null, // past game shown in the stats view, null for the current game
+  statsTab: 'stats', // 'stats' | 'deals', tabs shown for past games only
   customTarget: { setup: false, game: false },
 };
 ui.setup = newSetupDraft();
@@ -585,11 +586,22 @@ function viewStats(game) {
   const line = (label, pick) => `<tr><th scope="row">${label}</th><td class="us">${pick(stats.teams.us)}</td><td class="them">${pick(stats.teams.them)}</td></tr>`;
   const suitCounts = Object.entries(stats.suits).sort((a, b) => b[1] - a[1]);
 
+  // A past game has no board, so its deals are read from a second tab.
+  const past = game !== data.current;
+  const dealsTab = past && ui.statsTab === 'deals';
+  const tab = (id, label) =>
+    `<button class="seg-btn${(ui.statsTab === 'deals' ? 'deals' : 'stats') === id ? ' active' : ''}" data-action="stats-tab" data-value="${id}">${label}</button>`;
+  const dealsHtml = `
+    <section class="deals">
+      <div class="deals-head"><h3>${plural(computed.rows.length, 'donne')}</h3><span class="us">${esc(teamName(game, 'us'))}</span><span class="them">${esc(teamName(game, 'them'))}</span></div>
+      <div class="deal-list">${computed.rows.map((row) => dealRow(game, row)).join('')}</div>
+    </section>`;
+
   return `
   <main class="shell page">
     <header class="topbar">
       <button class="btn small" data-action="stats-back">${icon('back')} Retour</button>
-      <h1>Statistiques</h1>
+      <h1>${past ? 'Partie terminée' : 'Statistiques'}</h1>
     </header>
 
     <section class="panel scoreline">
@@ -597,8 +609,12 @@ function viewStats(game) {
       <div class="them"><span>${esc(teamName(game, 'them'))}</span><strong>${computed.totals.them}</strong></div>
     </section>
 
+    ${past ? `<div class="seg compact">${tab('stats', 'Statistiques')}${tab('deals', 'Donnes')}</div>` : ''}
+
     ${
-      stats.deals
+      dealsTab
+        ? dealsHtml
+        : stats.deals
         ? `
     <section class="panel">
       <h2>Évolution du score</h2>
@@ -650,8 +666,12 @@ function viewStats(game) {
         : `<section class="panel empty"><p>Les statistiques apparaîtront après la première donne.</p></section>`
     }
 
-    <button class="btn primary wide" data-action="share">${icon('share')} Partager le score</button>
-    <button class="btn wide" data-action="copy-score">${icon('copy')} Copier le score en texte</button>
+    ${
+      dealsTab
+        ? ''
+        : `<button class="btn primary wide" data-action="share">${icon('share')} Partager le score</button>
+    <button class="btn wide" data-action="copy-score">${icon('copy')} Copier le score en texte</button>`
+    }
   </main>`;
 }
 
@@ -1231,8 +1251,13 @@ function sheetTheme() {
     <button class="btn primary wide" data-action="close-sheet">Terminé</button>`;
 }
 
+// Game a deal sheet belongs to: the past game open in the stats view, else the current game.
+const shownGame = () => (ui.view === 'stats' && ui.statsGame ? ui.statsGame : data.current);
+
 function sheetDeal() {
-  const game = data.current;
+  const game = shownGame();
+  if (!game) return '';
+  const readOnly = game !== data.current;
   const computed = computeGame(game);
   const row = computed.rows.find((r) => r.deal.id === ui.sheetData);
   if (!row) return '';
@@ -1255,9 +1280,13 @@ function sheetDeal() {
       <div class="them"><span>${esc(teamName(game, 'them'))}</span><strong>+${row.score.them}</strong></div>
     </div>
     <ul class="facts">${facts.map((fact) => `<li>${fact}</li>`).join('')}</ul>
-    <button class="btn primary wide" data-action="edit-deal">${icon('edit')} Modifier</button>
+    ${
+      readOnly
+        ? `<button class="btn primary wide" data-action="close-sheet">Fermer</button>`
+        : `<button class="btn primary wide" data-action="edit-deal">${icon('edit')} Modifier</button>
     <button class="btn ghost wide danger" data-action="delete-deal">${icon('trash')} Supprimer cette donne</button>
-    <button class="btn ghost wide" data-action="close-sheet">Fermer</button>`;
+    <button class="btn ghost wide" data-action="close-sheet">Fermer</button>`
+    }`;
 }
 
 function sheetEnd() {
@@ -1279,7 +1308,7 @@ function sheetEnd() {
 }
 
 function viewSheet() {
-  const needsGame = ['menu', 'deal', 'end'].includes(ui.sheet);
+  const needsGame = ['menu', 'end'].includes(ui.sheet);
   if (needsGame && !data.current) return '';
   const content = { menu: sheetMenu, variants: sheetVariants, players: sheetPlayers, theme: sheetTheme, rule: sheetRule, deal: sheetDeal, end: sheetEnd }[ui.sheet]?.();
   if (!content) return '';
@@ -1532,7 +1561,12 @@ const actions = {
   },
   'open-past'(d) {
     ui.statsGame = data.history.find((game) => game.id === d.id) ?? null;
+    ui.statsTab = 'stats';
     if (ui.statsGame) switchView('stats');
+  },
+  'stats-tab'(d) {
+    ui.statsTab = d.value;
+    render();
   },
   'delete-past'(d) {
     askConfirm({ title: 'Supprimer cette partie ?', text: 'Elle sera retirée de l\'historique.', yes: 'Oui, supprimer', danger: true }, () => {
