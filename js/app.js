@@ -25,7 +25,17 @@ const APP_NAME = 'Dix de Der';
 const SEATS = ['Nord', 'Est', 'Sud', 'Ouest'];
 const TEAMS = ['us', 'them'];
 const TEAM_DEFAULTS = { us: 'Nous', them: 'Eux' };
-const MODE_LABELS = { coinche: 'Coinche', classic: 'Belote classique' };
+// Games offered on the home screen. Coinche and contree share the coinche scoring engine
+// and only differ by their default rules.
+const GAMES = {
+  coinche: { label: 'Coinche', tile: 'Coinche', hint: 'Avec annonces', mode: 'coinche', rules: {} },
+  contree: { label: 'Contrée', tile: 'Contrée', hint: 'Sans annonces', mode: 'coinche', rules: { announces: false } },
+  classic: { label: 'Belote classique', tile: 'Belote', hint: 'Sans enchères', mode: 'classic', rules: {} },
+};
+// Games saved before the `game` field existed only carry a scoring mode.
+const gameOf = (config) => (GAMES[config.game] ? config.game : config.mode === 'classic' ? 'classic' : 'coinche');
+const gameLabel = (config) => GAMES[gameOf(config)].label;
+const presetRules = (game, target) => ({ ...DEFAULT_RULES, ...GAMES[game].rules, target });
 const TARGETS = [500, 1000, 1500, 2000];
 const HISTORY_LIMIT = 50;
 const DEFAULT_THEME = 'nuit';
@@ -155,6 +165,8 @@ function applyTheme() {
 
 function newSetupDraft() {
   const base = {
+    game: 'coinche',
+    custom: false, // true when the "my rules" tile is selected
     mode: 'coinche',
     rules: { ...DEFAULT_RULES },
     teams: { us: '', them: '' },
@@ -166,8 +178,17 @@ function newSetupDraft() {
   return {
     ...base,
     ...structuredClone(last),
+    game: gameOf(last),
     rules: { ...DEFAULT_RULES, ...last.rules },
   };
+}
+
+// "My rules": the last set of rules the player tuned by hand on the home screen.
+function saveMyRules() {
+  const { rules } = ui.setup;
+  ui.setup.custom = true;
+  data.prefs.myRules = { game: gameOf(ui.setup), rules: { ...rules } };
+  save();
 }
 
 // ---------- game lifecycle ----------
@@ -200,7 +221,7 @@ function rematch() {
   const game = data.current;
   if (!game) return;
   const { mode, rules, teams, players } = game;
-  startGame({ mode, rules, teams, players, firstDealer: dealerAt(game.firstDealer, game.deals.length) });
+  startGame({ game: gameOf(game), custom: Boolean(game.custom), mode, rules, teams, players, firstDealer: dealerAt(game.firstDealer, game.deals.length) });
   toast('Revanche lancée, bonne partie !');
 }
 
@@ -405,10 +426,14 @@ function themeControl() {
 // Home screen: sized to fit one phone screen. Everything optional lives in sheets.
 function viewSetup() {
   const config = ui.setup;
-  const modeTile = (mode, title, text) => `
-    <button class="mode-tile${config.mode === mode ? ' active' : ''}" data-action="set-mode" data-value="${mode}" aria-pressed="${config.mode === mode}">
+  const selected = config.custom ? 'custom' : gameOf(config);
+  const modeTile = (id, title, text) => `
+    <button class="mode-tile${selected === id ? ' active' : ''}" data-action="set-game" data-value="${id}" aria-pressed="${selected === id}">
       <strong>${title}</strong><small>${text}</small>
     </button>`;
+  const mine = data.prefs.myRules;
+  const mineCount = mine ? variantSummary({ mode: GAMES[gameOf(mine)].mode, rules: mine.rules }).length : 0;
+  const mineHint = mine ? `${GAMES[gameOf(mine)].tile}${mineCount ? ` · ${plural(mineCount, 'variante')}` : ''}` : 'À régler';
   const settingTile = (attrs, iconName, label, value, disabled = false) => `
     <button class="setting-tile" ${attrs} ${disabled ? 'disabled' : ''}>
       ${icon(iconName)}<span><strong>${label}</strong><small>${value}</small></span>
@@ -432,8 +457,10 @@ function viewSetup() {
     <section class="home-block">
       <h2>À quoi joue-t-on ?</h2>
       <div class="mode-grid">
-        ${modeTile('coinche', 'Coinche / Contrée', 'Enchères, coinche, capot')}
-        ${modeTile('classic', 'Belote classique', 'Sans enchères')}
+        ${Object.entries(GAMES)
+          .map(([id, game]) => modeTile(id, game.tile, game.hint))
+          .join('')}
+        ${modeTile('custom', 'Mes règles', mineHint)}
       </div>
     </section>
 
@@ -527,7 +554,7 @@ function viewBoard(game) {
   <main class="shell board">
     <header class="topbar">
       <div class="topbar-title">
-        <strong>${MODE_LABELS[game.mode]}</strong>
+        <strong>${gameLabel(game)}</strong>
         <span>Partie en ${fmt(game.rules.target)} points</span>
       </div>
       <button class="btn small" data-action="open-sheet" data-sheet="menu">${icon('menu')} Menu</button>
@@ -685,7 +712,7 @@ function viewHistory() {
       return `
       <div class="past-game">
         <button class="past-main" data-action="open-past" data-id="${game.id}">
-          <small>${MODE_LABELS[game.mode]} · ${date} · ${plural(game.deals.length, 'donne')}</small>
+          <small>${gameLabel(game)} · ${date} · ${plural(game.deals.length, 'donne')}</small>
           <span class="past-score">${side('us')}${side('them')}</span>
         </button>
         <button class="btn ghost icon-only" data-action="delete-past" data-id="${game.id}" aria-label="Supprimer cette partie">${icon('trash')}</button>
@@ -865,7 +892,7 @@ function viewRules() {
       <button class="btn small" data-action="open-sheet" data-sheet="variants" data-scope="${scope}">${icon('rules')} Modifier</button>
     </div>
 
-    <p class="hint">${MODE_LABELS[config.mode]} : touchez une règle pour la lire.</p>
+    <p class="hint">${gameLabel(config)} : touchez une règle pour la lire.</p>
 
     <div class="rule-grid">
       ${recapSections(config)
@@ -1404,14 +1431,14 @@ function sharePayload(game) {
   });
   const card = {
     title: APP_NAME,
-    subtitle: `${MODE_LABELS[game.mode]} · ${date}`,
+    subtitle: `${gameLabel(game)} · ${date}`,
     footer: `${plural(game.deals.length, 'donne')} · partie en ${fmt(game.rules.target)} points`,
     winner: computed.winner,
     us: side('us'),
     them: side('them'),
     colors: themeColors(),
   };
-  let text = `${MODE_LABELS[game.mode]} : ${card.us.name} ${card.us.score} - ${card.them.score} ${card.them.name} (${plural(game.deals.length, 'donne')}).`;
+  let text = `${gameLabel(game)} : ${card.us.name} ${card.us.score} - ${card.them.score} ${card.them.name} (${plural(game.deals.length, 'donne')}).`;
   if (computed.winner) text += ` Victoire de ${teamName(game, computed.winner)} !`;
   return { card, text };
 }
@@ -1420,8 +1447,32 @@ function sharePayload(game) {
 
 const actions = {
   // Setup, rules and appearance
-  'set-mode'(d) {
-    ui.setup.mode = d.value;
+  // Home tiles: a game resets the rules to its defaults, "my rules" restores the hand-tuned set.
+  'set-game'(d) {
+    const config = ui.setup;
+    const { target } = config.rules;
+    if (GAMES[d.value]) {
+      config.game = d.value;
+      config.mode = GAMES[d.value].mode;
+      config.rules = presetRules(d.value, target);
+      config.custom = false;
+      render();
+      return;
+    }
+    const mine = data.prefs.myRules;
+    if (mine) {
+      config.game = gameOf(mine);
+      config.mode = GAMES[config.game].mode;
+      config.rules = { ...DEFAULT_RULES, ...mine.rules, target };
+      config.custom = true;
+      render();
+      return;
+    }
+    // Nothing saved yet: start from the current rules and open the rules sheet to tune them.
+    saveMyRules();
+    ui.sheet = 'variants';
+    ui.sheetScope = 'setup';
+    ui.ruleGroup = null;
     render();
   },
   'set-target'(d) {
@@ -1435,18 +1486,21 @@ const actions = {
   },
   'set-rule'(d) {
     scopeObj(d.scope).rules[d.key] = d.value;
+    if (scopeObj(d.scope) === ui.setup) saveMyRules();
     commit(d.scope);
   },
   'toggle-rule'(d) {
     const { rules } = scopeObj(d.scope);
     rules[d.key] = !rules[d.key];
+    if (scopeObj(d.scope) === ui.setup) saveMyRules();
     commit(d.scope);
   },
   'reset-rules'(d) {
     const config = scopeObj(d.scope);
-    config.rules = { ...DEFAULT_RULES, target: config.rules.target };
+    config.rules = presetRules(gameOf(config), config.rules.target);
+    if (config === ui.setup) config.custom = false;
     commit(d.scope);
-    toast('Règles classiques rétablies');
+    toast(`Règles de base rétablies : ${gameLabel(config)}`);
   },
   'set-dealer'(d) {
     const config = scopeObj(d.scope);

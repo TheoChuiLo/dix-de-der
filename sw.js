@@ -1,7 +1,7 @@
 // Offline support: precache the app shell, then serve stale-while-revalidate.
 // Bump CACHE_VERSION on every release so installed apps pick up the new files.
 
-const CACHE_VERSION = 'dix-de-der-v5';
+const CACHE_VERSION = 'dix-de-der-v6';
 
 const APP_SHELL = [
   './',
