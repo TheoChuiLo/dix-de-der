@@ -1,48 +1,48 @@
 # Dix de Der
 
-**English** | [Français](README.fr.md)
+[English](README.md) | **Français**
 
-Score counter for coinche, contree and classic belote. Installable web app (PWA) that works offline, with no account, no server, no build step and no dependencies. The interface is in French.
+Compteur de points pour la coinche, la contrée et la belote classique. Application web installable (PWA) qui fonctionne hors ligne, sans compte, sans serveur, sans étape de build et sans dépendance.
 
-**Open the app: https://theochuilo.github.io/dix-de-der/**
+**Ouvrir l'application : https://theochuilo.github.io/dix-de-der/**
 
-## Install on a phone
+## Installer sur un téléphone
 
-The app runs in any recent browser. To get an icon on the home screen and full-screen display:
+L'application fonctionne dans tout navigateur récent. Pour avoir une icône sur l'écran d'accueil et un affichage plein écran :
 
-| Phone | Steps |
+| Téléphone | Étapes |
 |---|---|
-| Android (Chrome) | Open the link, menu ⋮, then "Installer l'application" or "Ajouter à l'écran d'accueil" |
-| iPhone (Safari) | Open the link, Share button, then "Sur l'écran d'accueil" |
+| Android (Chrome) | Ouvrir le lien, menu ⋮, puis « Installer l'application » ou « Ajouter à l'écran d'accueil » |
+| iPhone (Safari) | Ouvrir le lien, bouton Partager, puis « Sur l'écran d'accueil » |
 
-Updates are downloaded in the background: open the app, close it and reopen it to get the latest version.
+Les mises à jour se téléchargent en arrière-plan : ouvrir l'application, la fermer, puis la rouvrir pour avoir la dernière version.
 
-## Features
+## Fonctionnalités
 
-- Four games on the home screen: Coinche (with announces), Contree (without announces), classic Belote, and "Mes règles", which restores the last set of variants tuned by hand.
-- Guided deal entry: taker, contract, suit, then the result. One tap per team for the belote, Capot and Generale keys, coinche and surcoinche, announces.
-- Rule variants, changeable before or during a game. Scores are recomputed at once.
-- Rules recap generated from the active variants, with worked examples computed by the scoring engine.
-- Player and team names, dealer rotation.
-- Statistics per team and per player, with a score evolution chart.
-- History of the last 50 games, each with its statistics and its deals.
-- Score sharing as an image or as text.
-- Six colour themes and an option to keep the screen on.
-- The home screen, the settings and the deal entry fit a phone screen without scrolling, down to 360x640. Long lists (deals, history) and the statistics page scroll.
+- Quatre jeux sur l'accueil : Coinche (avec annonces), Contrée (sans annonces), Belote classique et « Mes règles », qui restaure les dernières variantes réglées à la main.
+- Saisie guidée de chaque donne : preneur, contrat, couleur, puis résultat. Une touche par équipe pour la belote, touches Capot et Générale, coinche et surcoinche, annonces.
+- Variantes de règles modifiables avant ou pendant la partie. Les scores sont recalculés aussitôt.
+- Récap des règles généré à partir des variantes actives, avec des exemples chiffrés calculés par le moteur de comptage.
+- Noms des joueurs et des équipes, rotation du donneur.
+- Statistiques par équipe et par joueur, avec la courbe d'évolution du score.
+- Historique des 50 dernières parties, chacune avec ses statistiques et ses donnes.
+- Partage du score en image ou en texte.
+- Six thèmes de couleurs et une option pour garder l'écran allumé.
+- L'accueil, les réglages et la saisie d'une donne tiennent sur un écran de téléphone sans défiler, jusqu'à 360x640. Les longues listes (donnes, historique) et la page de statistiques défilent.
 
-## Data and privacy
+## Données et vie privée
 
-Everything is stored on the device, in the browser's local storage: current game, history and preferences. Nothing is sent anywhere. As a consequence, games are not synchronised between phones and clearing the site data erases them.
+Tout est enregistré sur l'appareil, dans le stockage local du navigateur : partie en cours, historique et préférences. Rien n'est envoyé ailleurs. En conséquence, les parties ne sont pas synchronisées entre téléphones, et effacer les données du site les supprime.
 
-## Run locally
+## Lancer en local
 
-Requires a recent Node.js, only for the dev server and the tests.
+Il faut un Node.js récent, uniquement pour le serveur de développement et les tests.
 
 ```bash
 npm start
 ```
 
-Then open http://localhost:8795. The service worker is disabled on localhost to avoid stale files during development; append `?sw` to the URL to test offline mode.
+Ouvrir ensuite http://localhost:8795. Le service worker est désactivé sur localhost pour éviter les fichiers périmés pendant le développement ; ajouter `?sw` à l'URL pour tester le mode hors ligne.
 
 ## Tests
 
@@ -50,61 +50,61 @@ Then open http://localhost:8795. The service worker is disabled on localhost to 
 npm test
 ```
 
-Covers the scoring engine (`js/scoring.js`) and the statistics (`js/stats.js`).
+Les tests couvrent le moteur de comptage (`js/scoring.js`) et les statistiques (`js/stats.js`).
 
 ## Structure
 
-| Path | Role |
+| Chemin | Rôle |
 |---|---|
-| `index.html`, `css/styles.css` | Page shell, styles and colour themes |
-| `js/scoring.js` | Pure scoring rules (classic belote, coinche, running totals) |
-| `js/stats.js` | Per-team and per-player statistics |
-| `js/app.js` | UI state, rendering, events |
-| `js/chart.js` | SVG score evolution chart |
-| `js/share.js` | Score card image (canvas) and sharing |
-| `js/store.js` | localStorage persistence |
-| `sw.js`, `manifest.webmanifest`, `icons/` | PWA: offline cache and install metadata |
-| `scripts/` | Dev server and icon generator |
-| `tests/` | Scoring and statistics tests |
+| `index.html`, `css/styles.css` | Page, styles et thèmes de couleurs |
+| `js/scoring.js` | Règles de comptage pures (belote classique, coinche, totaux) |
+| `js/stats.js` | Statistiques par équipe et par joueur |
+| `js/app.js` | État de l'interface, rendu, évènements |
+| `js/chart.js` | Courbe d'évolution du score en SVG |
+| `js/share.js` | Image du score (canvas) et partage |
+| `js/store.js` | Enregistrement dans le localStorage |
+| `sw.js`, `manifest.webmanifest`, `icons/` | PWA : cache hors ligne et métadonnées d'installation |
+| `scripts/` | Serveur de développement et générateur d'icônes |
+| `tests/` | Tests du comptage et des statistiques |
 
-The UI has no framework: `js/app.js` renders template strings into `#app` and handles clicks through `data-action` attributes. The home screen holds the game choice and the target score; everything else lives in bottom sheets (players, rules, display) or in dedicated views (statistics, history, rules recap).
+L'interface n'utilise aucun framework : `js/app.js` génère le HTML dans `#app` et traite les clics via des attributs `data-action`. L'accueil contient le choix du jeu et le score cible ; tout le reste est rangé dans des panneaux (joueurs, règles, affichage) ou dans des écrans dédiés (statistiques, historique, récap des règles).
 
-Code, comments and commit messages are in English. Only the texts shown to players are in French.
+Le code, les commentaires et les messages de commit sont en anglais. Seuls les textes affichés aux joueurs sont en français.
 
-## Games and rule variants
+## Jeux et variantes
 
-The games are declared in `GAMES` (`js/app.js`). Coinche and contree share the same scoring engine and only differ by their default rules: contree turns the announces off.
+Les jeux sont déclarés dans `GAMES` (`js/app.js`). La coinche et la contrée partagent le même moteur de comptage et ne diffèrent que par leurs règles de base : la contrée désactive les annonces.
 
-Every variant lives in `DEFAULT_RULES` (`js/scoring.js`):
+Toutes les variantes sont dans `DEFAULT_RULES` (`js/scoring.js`) :
 
-| Variant | Choices |
+| Variante | Choix |
 |---|---|
-| Counting | Points won + contract, or contract only |
-| Rounding | Card points rounded to the nearest ten, or exact |
-| Failed contract | The defense scores 160 + contract, or 160 only |
-| Coinche | Multiplies the contract or the whole total; winner takes all or each side keeps its points; surcoinche on or off |
-| Belote and announces | Count toward the contract or not; announces on or off |
-| Bids | No-trump and all-trump, generale, 170 and 180 contracts |
-| Classic belote | Tie rule ("litige") on or off |
+| Comptage | Points faits + contrat, ou contrat seul |
+| Arrondi | Points des plis arrondis à la dizaine, ou exacts |
+| Contrat chuté | La défense marque 160 + contrat, ou 160 seulement |
+| Coinche | Multiplie le contrat ou tout le total ; le gagnant prend tout ou chacun garde ses points ; surcoinche activée ou non |
+| Belote et annonces | Comptent pour le contrat ou non ; annonces activées ou non |
+| Enchères | Sans atout et tout atout, générale, contrats de 170 et 180 |
+| Belote classique | Règle du litige activée ou non |
 
-Colour themes are CSS variable sets in `css/styles.css` (`[data-theme='...']`), listed in `THEMES` in `js/app.js`.
+Les thèmes de couleurs sont des jeux de variables CSS dans `css/styles.css` (`[data-theme='...']`), listés dans `THEMES` dans `js/app.js`.
 
-## Scoring rules
+## Règles de comptage
 
-Default rules for coinche and contree:
+Règles de base pour la coinche et la contrée :
 
-- "Points + contract": a made contract scores the contract plus the points won, the defense scores its own points. A failed contract gives 160 plus the contract to the defense.
-- "Contract only": the contract goes to the takers when made, to the defense when failed.
-- Coinche (x2) and surcoinche (x4) multiply the contract; the winner of a coinched deal takes everything.
-- Capot is a 250 contract, generale a 500 contract.
-- An unannounced capot counts 250 card points. An unannounced generale is scored the same way and is labelled as a generale in the deal list.
-- Belote (20) always stays with its holder and counts toward the contract, as do the takers' announces.
-- With rounding on, the takers' points are rounded to the nearest ten and the defense gets the complement to 160.
+- « Points faits + contrat » : un contrat réussi rapporte le contrat plus les points faits, la défense marque ses propres points. Un contrat chuté donne 160 plus le contrat à la défense.
+- « Contrat seul » : le contrat va aux preneurs s'il est réussi, à la défense s'il est chuté.
+- La coinche (x2) et la surcoinche (x4) multiplient le contrat ; le gagnant d'une donne coinchée prend tout.
+- Le capot est un contrat de 250, la générale un contrat de 500.
+- Un capot non annoncé compte 250 points de plis. Une générale non annoncée est comptée de la même façon et apparaît comme générale dans la liste des donnes.
+- La belote (20) reste toujours à l'équipe qui la détient et compte pour le contrat, comme les annonces des preneurs.
+- Avec l'arrondi, les points des preneurs sont arrondis à la dizaine et la défense reçoit le complément à 160.
 
-Classic belote: the taker must score more than the defense, otherwise the defense scores 162 ("dedans"). A capot is worth 252. On a tie ("litige") the taker's points go to the winner of the next deal.
+Belote classique : le preneur doit marquer plus que la défense, sinon la défense marque 162 (« dedans »). Un capot vaut 252. En cas d'égalité (« litige »), les points du preneur vont au gagnant de la donne suivante.
 
-## Deploying
+## Publication
 
-The site is served by GitHub Pages from the `main` branch: pushing to `main` publishes it. Any other static HTTPS host works too, the folder is served as is.
+Le site est servi par GitHub Pages depuis la branche `main` : un push sur `main` le publie. Tout autre hébergement statique en HTTPS convient aussi, le dossier est servi tel quel.
 
-Bump `CACHE_VERSION` in `sw.js` on each release so installed apps refresh.
+Incrémenter `CACHE_VERSION` dans `sw.js` à chaque publication pour que les applications installées se mettent à jour.
