@@ -1,6 +1,6 @@
 # Dix de Der
 
-[English](README.md) | **Français**
+**Français** | [English](README.en.md)
 
 Compteur de points pour la coinche, la contrée et la belote classique. Application web installable (PWA) qui fonctionne hors ligne, sans compte, sans serveur, sans étape de build et sans dépendance.
 

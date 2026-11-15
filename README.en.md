@@ -1,6 +1,6 @@
 # Dix de Der
 
-**English** | [Français](README.fr.md)
+[Français](README.md) | **English**
 
 Score counter for coinche, contree and classic belote. Installable web app (PWA) that works offline, with no account, no server, no build step and no dependencies. The interface is in French.
 
