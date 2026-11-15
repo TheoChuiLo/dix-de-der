@@ -1,0 +1,11 @@
+{
+  "name": "dix-de-der",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Score counter for belote, coinche and contree (installable web app, no build step).",
+  "scripts": {
+    "start": "node scripts/dev-server.mjs",
+    "test": "node --test"
+  }
+}
