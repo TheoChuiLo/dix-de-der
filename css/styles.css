@@ -402,11 +402,150 @@ button {
   box-shadow: 0 10px 30px color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
-/* ---------- setup ---------- */
+/* ---------- home ---------- */
+
+/* The home screen fills exactly one phone screen: the hero absorbs spare height. */
+.shell.home {
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding-bottom: calc(104px + env(safe-area-inset-bottom));
+}
+
+.home .hero {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.home-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.home-block h2 {
+  padding-left: 4px;
+  font: 700 0.8125rem/1.2 var(--font);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.setting-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.setting-tile {
+  appearance: none;
+  border: 0;
+  min-width: 0;
+  min-height: 66px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line);
+  transition: transform 0.08s ease;
+}
+
+.setting-tile:active {
+  transform: scale(0.96);
+  background: var(--surface-2);
+}
+
+.setting-tile:disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.setting-tile .icon {
+  width: 1.6em;
+  height: 1.6em;
+  color: var(--accent);
+}
+
+.setting-tile span {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.setting-tile strong {
+  font-size: 1.0625rem;
+  font-weight: 700;
+}
+
+.setting-tile small {
+  font-size: 0.8125rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.setting-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.setting-row {
+  appearance: none;
+  border: 0;
+  width: 100%;
+  min-height: 60px;
+  padding: 8px 12px 8px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.setting-row:active {
+  background: var(--surface-2);
+}
+
+.setting-row span {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.setting-row strong {
+  font-size: 1.0625rem;
+  font-weight: 700;
+}
+
+.setting-row small {
+  font-size: 0.875rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.setting-row .icon {
+  color: var(--muted);
+}
+
+.actionbar.duo .actionbar-inner {
+  grid-template-columns: 1fr 1.5fr;
+}
 
 .hero {
   text-align: center;
-  padding: 14px 0 6px;
+  padding: 8px 0 4px;
 }
 
 .hero h1 {
@@ -451,8 +590,9 @@ button {
   appearance: none;
   border: 0;
   border-radius: 18px;
-  padding: 16px 14px;
-  min-height: 128px;
+  padding: 14px 14px;
+  min-height: 96px;
+  justify-content: center;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -1843,11 +1983,41 @@ input:focus {
 
 /* ---------- rules recap, stats and history ---------- */
 
-.rule-card p {
+.recap-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.recap-head .pills {
+  flex: 1;
+}
+
+.rule-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.rule-grid .setting-row {
+  min-height: 56px;
+  padding: 6px 8px 6px 14px;
+}
+
+.rule-grid .setting-row strong {
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.rule-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   font-size: 1.0625rem;
 }
 
-.rule-card .example {
+.rule-body .example {
   padding: 10px 12px;
   border-radius: 14px;
   background: var(--surface-2);
@@ -1855,7 +2025,7 @@ input:focus {
   color: var(--muted);
 }
 
-.rule-card .example strong {
+.rule-body .example strong {
   color: var(--text);
 }
 
@@ -2074,7 +2244,11 @@ input:focus {
   }
 
   .chips {
-    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+
+  .chip {
+    font-size: 0.9375rem;
   }
 
   .chips.four,
@@ -2092,6 +2266,52 @@ input:focus {
 
   .btn.big {
     font-size: 1.2rem;
+  }
+}
+
+@media (max-height: 700px) {
+  .home .hero p {
+    display: none;
+  }
+
+  .home .hero h1 {
+    font-size: 2rem;
+    margin-top: 8px;
+  }
+
+  .home .logo span {
+    width: 36px;
+    height: 36px;
+    font-size: 1.2rem;
+    border-radius: 11px;
+  }
+
+  .home .mode-tile {
+    min-height: 76px;
+  }
+
+  .home .setting-tile {
+    min-height: 58px;
+  }
+
+  .sheet-players .hint {
+    display: none;
+  }
+
+  .sheet .setting-row {
+    min-height: 52px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+
+  .rule-body .stat-table th,
+  .rule-body .stat-table td {
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+
+  .sheet-players input {
+    height: 48px;
   }
 }
 

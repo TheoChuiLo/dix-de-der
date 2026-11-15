@@ -83,6 +83,7 @@ const ICONS = {
   palette: '<path d="M12 3a9 9 0 1 0 0 18c1.4 0 2-1 2-2 0-1.6-1-2 0-3h2.5A4.5 4.5 0 0 0 21 11.5C21 6.8 17 3 12 3z"/><circle cx="8" cy="11" r="1"/><circle cx="12" cy="7.5" r="1"/><circle cx="16" cy="10" r="1"/>',
   users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.5a6.5 6.5 0 0 1 3.5 5.5"/>',
   chevron: '<path d="M6 9l6 6 6-6"/>',
+  chevronRight: '<path d="M9 6l6 6-6 6"/>',
 };
 
 const app = document.getElementById('app');
@@ -96,6 +97,7 @@ const ui = {
   sheet: null, // 'menu' | 'variants' | 'players' | 'theme' | 'deal' | 'end'
   sheetData: null,
   sheetScope: 'game', // which config a rules sheet edits: 'setup' or 'game'
+  ruleGroup: null, // id of the variant group opened from the rules hub
   rulesScope: 'game', // which config the rules recap describes
   wizard: null,
   confirm: null,
@@ -275,37 +277,47 @@ function variantPills(config) {
   }</p>`;
 }
 
-// Every rule variant, grouped. Used by the variants sheet for both scopes.
-function variantsControl(scope, config) {
+// Rule variants grouped by theme. Each group opens in its own small sheet.
+function ruleGroups(scope, config) {
   const rules = withDefaults(config.rules);
   const sw = (key, label, hint) => switchRow('toggle-rule', `data-scope="${scope}" data-key="${key}"`, label, rules[key], hint);
-  const group = (title, body) => `<section class="group"><h3>${title}</h3>${body}</section>`;
   const groups = [];
+
+  if (scope === 'game') {
+    groups.push({ id: 'target', title: 'Score à atteindre', summary: `${fmt(rules.target)} points`, body: targetControl(scope, config) });
+  }
 
   if (config.mode === 'coinche') {
     const points = rules.counting === 'points';
-    groups.push(
-      group(
-        'Comptage',
+    groups.push({
+      id: 'counting',
+      title: 'Comptage',
+      summary: points ? `Points faits + contrat, ${rules.rounding ? 'arrondi' : 'sans arrondi'}` : 'Contrat seul',
+      body:
         ruleSeg(scope, rules, 'counting', COUNTING_OPTIONS) +
-          `<p class="hint">${countingHint(rules)}</p>` +
-          (points ? sw('rounding', 'Arrondir à la dizaine', '86 points comptent 90') : ''),
-      ),
-    );
+        `<p class="hint">${countingHint(rules)}</p>` +
+        (points ? sw('rounding', 'Arrondir à la dizaine', '86 points comptent 90') : ''),
+    });
     if (points) {
-      groups.push(
-        group(
-          'Contrat chuté',
+      groups.push({
+        id: 'failed',
+        title: 'Contrat chuté',
+        summary: rules.failedScore === 'both' ? 'La défense marque 160 + contrat' : 'La défense marque 160',
+        body:
           ruleSeg(scope, rules, 'failedScore', [
             ['both', '160 + contrat'],
             ['points', '160 seulement'],
           ]) + `<p class="hint">Ce que marque la défense quand les preneurs chutent.</p>`,
-        ),
-      );
+      });
     }
-    groups.push(
-      group(
-        'Coinche',
+    groups.push({
+      id: 'coinche',
+      title: 'Coinche',
+      summary: [points ? (rules.coincheScope === 'contract' ? 'Double le contrat' : 'Double tout') : null, rules.surcoinche ? 'surcoinche' : 'sans surcoinche']
+        .filter(Boolean)
+        .join(', ')
+        .replace(/^./, (c) => c.toUpperCase()),
+      body:
         (points
           ? ruleSeg(scope, rules, 'coincheScope', [
               ['contract', 'Double le contrat'],
@@ -318,36 +330,37 @@ function variantsControl(scope, config) {
             }</p>` +
             sw('coincheWinnerTakesAll', 'Le gagnant prend tout', 'Donne coinchée : tous les points de plis au vainqueur')
           : '') + sw('surcoinche', 'Surcoinche autorisée', 'Coinche sur coinche : contrat ×4'),
-      ),
-    );
-    groups.push(
-      group(
-        'Belote et annonces',
+    });
+    groups.push({
+      id: 'bonus',
+      title: 'Belote et annonces',
+      summary: rules.announces ? 'Annonces comptées' : 'Sans annonces',
+      body:
         (points ? sw('beloteInContract', 'La belote aide au contrat', 'Ses 20 points comptent pour l\'atteindre') : '') +
-          sw('announces', 'Compter les annonces', 'Tierce, cinquante, cent, carré') +
-          (points && rules.announces ? sw('announcesInContract', 'Les annonces aident au contrat', 'Celles des preneurs comptent pour l\'atteindre') : ''),
-      ),
-    );
-    groups.push(
-      group(
-        'Enchères proposées',
-        sw('noTrump', 'Sans atout et tout atout') +
-          sw('generale', 'Générale', 'Un seul joueur fait tous les plis : contrat de 500') +
-          sw('extendedContracts', 'Contrats de 170 et 180', 'Atteignables avec la belote ou les annonces'),
-      ),
-    );
-  } else {
-    groups.push(
-      group(
-        'Belote classique',
         sw('announces', 'Compter les annonces', 'Tierce, cinquante, cent, carré') +
-          sw('litige', 'Litige en cas d\'égalité', 'Les points du preneur vont au vainqueur de la donne suivante'),
-      ),
-    );
+        (points && rules.announces ? sw('announcesInContract', 'Les annonces aident au contrat', 'Celles des preneurs comptent pour l\'atteindre') : ''),
+    });
+    groups.push({
+      id: 'bids',
+      title: 'Enchères proposées',
+      summary: `Jusqu'à ${rules.extendedContracts ? 180 : 160}${rules.noTrump ? ', SA et TA' : ''}${rules.generale ? ', générale' : ''}`,
+      body:
+        sw('noTrump', 'Sans atout et tout atout') +
+        sw('generale', 'Générale', 'Un seul joueur fait tous les plis : contrat de 500') +
+        sw('extendedContracts', 'Contrats de 170 et 180', 'Atteignables avec la belote ou les annonces'),
+    });
+  } else {
+    groups.push({
+      id: 'classic',
+      title: 'Belote classique',
+      summary: `${rules.announces ? 'Annonces comptées' : 'Sans annonces'}, ${rules.litige ? 'litige' : 'sans litige'}`,
+      body:
+        sw('announces', 'Compter les annonces', 'Tierce, cinquante, cent, carré') +
+        sw('litige', 'Litige en cas d\'égalité', 'Les points du preneur vont au vainqueur de la donne suivante'),
+    });
   }
 
-  return `${groups.join('')}
-    <button class="btn ghost wide" data-action="reset-rules" data-scope="${scope}">${icon('replay')} Rétablir les règles classiques</button>`;
+  return groups;
 }
 
 function namesControl(scope, config) {
@@ -387,15 +400,25 @@ function themeControl() {
 
 // ---------- views ----------
 
+// Home screen: sized to fit one phone screen. Everything optional lives in sheets.
 function viewSetup() {
   const config = ui.setup;
   const modeTile = (mode, title, text) => `
     <button class="mode-tile${config.mode === mode ? ' active' : ''}" data-action="set-mode" data-value="${mode}" aria-pressed="${config.mode === mode}">
       <strong>${title}</strong><small>${text}</small>
     </button>`;
+  const settingTile = (attrs, iconName, label, value, disabled = false) => `
+    <button class="setting-tile" ${attrs} ${disabled ? 'disabled' : ''}>
+      ${icon(iconName)}<span><strong>${label}</strong><small>${value}</small></span>
+    </button>`;
+
+  const customNames = config.players.some((name) => (name || '').trim());
+  const variantCount = variantSummary(config).length;
+  const themeLabel = THEMES.find((theme) => theme.id === document.documentElement.dataset.theme)?.label ?? '';
+  const past = data.history.length;
 
   return `
-  <main class="shell setup">
+  <main class="shell home">
     <header class="hero">
       <div class="logo" aria-hidden="true">
         <span>${SUITS.spades.symbol}</span><span class="red">${SUITS.hearts.symbol}</span><span class="red">${SUITS.diamonds.symbol}</span><span>${SUITS.clubs.symbol}</span>
@@ -404,54 +427,40 @@ function viewSetup() {
       <p>Compteur de belote, coinche et contrée</p>
     </header>
 
-    ${data.current ? `<button class="btn wide" data-action="resume">${icon('back')} Reprendre la partie en cours</button>` : ''}
-
-    <section class="panel">
+    <section class="home-block">
       <h2>À quoi joue-t-on ?</h2>
       <div class="mode-grid">
-        ${modeTile('coinche', 'Coinche / Contrée', 'Enchères de 80 à 160, capot, coinche et surcoinche')}
-        ${modeTile('classic', 'Belote classique', 'Sans enchères : le preneur doit faire plus que la défense')}
+        ${modeTile('coinche', 'Coinche / Contrée', 'Enchères, coinche, capot')}
+        ${modeTile('classic', 'Belote classique', 'Sans enchères')}
       </div>
     </section>
 
-    <section class="panel">
+    <section class="home-block">
       <h2>Partie en</h2>
       ${targetControl('setup', config)}
     </section>
 
-    <section class="panel">
-      <h2>Règles</h2>
-      ${
-        config.mode === 'coinche'
-          ? `${ruleSeg('setup', withDefaults(config.rules), 'counting', COUNTING_OPTIONS)}<p class="hint">${countingHint(withDefaults(config.rules))}</p>`
-          : `<p class="hint">Le preneur doit faire plus de points que la défense, sinon il est dedans.</p>`
-      }
-      ${variantPills(config)}
-      <div class="row-2">
-        <button class="btn" data-action="open-sheet" data-sheet="variants" data-scope="setup">${icon('rules')} Variantes</button>
-        <button class="btn" data-action="show-rules" data-scope="setup">${icon('book')} Récap</button>
-      </div>
+    <section class="setting-grid">
+      ${settingTile(
+        'data-action="open-sheet" data-sheet="players" data-scope="setup"',
+        'users',
+        'Joueurs',
+        customNames ? esc([0, 1, 2, 3].map((p) => playerName(config, p)).join(', ')) : 'Noms et donneur',
+      )}
+      ${settingTile(
+        'data-action="open-sheet" data-sheet="variants" data-scope="setup"',
+        'rules',
+        'Règles',
+        variantCount ? plural(variantCount, 'variante') : 'Classiques',
+      )}
+      ${settingTile('data-action="open-sheet" data-sheet="theme" data-scope="setup"', 'palette', 'Affichage', themeLabel)}
+      ${settingTile('data-action="show-history"', 'history', 'Historique', past ? plural(past, 'partie') : 'Aucune partie', !past)}
     </section>
 
-    <section class="panel">
-      <h2>Équipes</h2>
-      <p class="hint">Facultatif. Les partenaires sont face à face : Nord avec Sud, Est avec Ouest.</p>
-      ${namesControl('setup', config)}
-    </section>
-
-    <section class="panel">
-      <h2>Premier donneur</h2>
-      ${dealerControl('setup', config)}
-    </section>
-
-    <div class="row-2">
-      <button class="btn ghost" data-action="open-sheet" data-sheet="theme" data-scope="setup">${icon('palette')} Couleurs</button>
-      <button class="btn ghost" data-action="show-history" ${data.history.length ? '' : 'disabled'}>${icon('history')} Historique</button>
-    </div>
-
-    <footer class="actionbar single">
+    <footer class="actionbar single${data.current ? ' duo' : ''}">
       <div class="actionbar-inner">
-        <button class="btn primary big" data-action="start-game">Commencer la partie</button>
+        ${data.current ? `<button class="btn big" data-action="resume">Reprendre</button>` : ''}
+        <button class="btn primary big" data-action="start-game">${data.current ? 'Nouvelle partie' : 'Commencer la partie'}</button>
       </div>
     </footer>
   </main>`;
@@ -786,13 +795,42 @@ function rulesRecap(config) {
   return items;
 }
 
-function viewRules() {
-  const scope = ui.rulesScope === 'game' && data.current ? 'game' : 'setup';
-  const config = scopeObj(scope);
+// Recap sections: the rules in plain language, then the reference tables.
+function recapSections(config) {
   const rules = withDefaults(config.rules);
+  const sections = rulesRecap(config).map((item) => ({
+    title: item.title,
+    body: `<p>${item.text}</p>${item.sample ? `<p class="example">${item.sample}</p>` : ''}`,
+  }));
+
+  if (rules.announces) {
+    sections.push({
+      title: 'Valeur des annonces',
+      body: `<table class="stat-table"><tbody>${Object.keys(ANNOUNCE_POINTS)
+        .map((kind) => `<tr><th scope="row">${ANNOUNCE_LABELS[kind]}</th><td>${ANNOUNCE_POINTS[kind]}</td></tr>`)
+        .join('')}</tbody></table>`,
+    });
+  }
+
   const valueRows = CARD_VALUES.trump
     .map(([card, value], i) => `<tr><th scope="row">${card}</th><td>${value}</td><th scope="row">${CARD_VALUES.plain[i][0]}</th><td>${CARD_VALUES.plain[i][1]}</td></tr>`)
     .join('');
+  sections.push({
+    title: 'Valeur des cartes',
+    body: `<table class="stat-table card-values">
+        <thead><tr><th scope="col" colspan="2">À l'atout</th><th scope="col" colspan="2">Hors atout</th></tr></thead>
+        <tbody>${valueRows}</tbody>
+      </table>
+      <p class="hint">Le dernier pli rapporte 10 points de plus (le dix de der). Une donne compte 162 points en tout.</p>`,
+  });
+
+  return sections;
+}
+
+// Recap index: one tile per rule, each opening in its own sheet, so nothing scrolls.
+function viewRules() {
+  const scope = ui.rulesScope === 'game' && data.current ? 'game' : 'setup';
+  const config = scopeObj(scope);
 
   return `
   <main class="shell page">
@@ -801,45 +839,32 @@ function viewRules() {
       <h1>Récap des règles</h1>
     </header>
 
-    <section class="panel">
-      <h2>${MODE_LABELS[config.mode]} · variantes actives</h2>
+    <div class="recap-head">
       ${variantPills(config)}
-      <button class="btn wide" data-action="open-sheet" data-sheet="variants" data-scope="${scope}">${icon('rules')} Modifier les variantes</button>
-    </section>
+      <button class="btn small" data-action="open-sheet" data-sheet="variants" data-scope="${scope}">${icon('rules')} Modifier</button>
+    </div>
 
-    ${rulesRecap(config)
-      .map(
-        (item) => `
-      <section class="panel rule-card">
-        <h2>${item.title}</h2>
-        <p>${item.text}</p>
-        ${item.sample ? `<p class="example">${item.sample}</p>` : ''}
-      </section>`,
-      )
-      .join('')}
+    <p class="hint">${MODE_LABELS[config.mode]} : touchez une règle pour la lire.</p>
 
-    ${
-      rules.announces
-        ? `<section class="panel">
-            <h2>Valeur des annonces</h2>
-            <table class="stat-table">
-              <tbody>${Object.keys(ANNOUNCE_POINTS)
-                .map((kind) => `<tr><th scope="row">${ANNOUNCE_LABELS[kind]}</th><td>${ANNOUNCE_POINTS[kind]}</td></tr>`)
-                .join('')}</tbody>
-            </table>
-          </section>`
-        : ''
-    }
-
-    <section class="panel">
-      <h2>Valeur des cartes</h2>
-      <table class="stat-table card-values">
-        <thead><tr><th scope="col" colspan="2">À l'atout</th><th scope="col" colspan="2">Hors atout</th></tr></thead>
-        <tbody>${valueRows}</tbody>
-      </table>
-      <p class="hint">Le dernier pli rapporte 10 points de plus (le dix de der). Une donne compte 162 points en tout.</p>
-    </section>
+    <div class="rule-grid">
+      ${recapSections(config)
+        .map(
+          (section, i) =>
+            `<button class="setting-row" data-action="open-rule" data-index="${i}"><span><strong>${section.title}</strong></span>${icon('chevronRight')}</button>`,
+        )
+        .join('')}
+    </div>
   </main>`;
+}
+
+function sheetRule() {
+  const scope = ui.rulesScope === 'game' && data.current ? 'game' : 'setup';
+  const section = recapSections(scopeObj(scope))[ui.sheetData];
+  if (!section) return '';
+  return `
+    <h2>${section.title}</h2>
+    <div class="rule-body">${section.body}</div>
+    <button class="btn primary wide" data-action="close-sheet">Fermer</button>`;
 }
 
 // ---------- deal wizard ----------
@@ -1129,10 +1154,10 @@ function sheetMenu() {
     <h2>Menu</h2>
     <div class="menu-grid">
       ${tile('show-stats', 'chart', 'Statistiques')}
+      ${tile('open-sheet', 'rules', 'Règles', 'data-sheet="variants" data-scope="game"')}
       ${tile('show-rules', 'book', 'Récap des règles', 'data-scope="game"')}
-      ${tile('open-sheet', 'rules', 'Variantes de comptage', 'data-sheet="variants" data-scope="game"')}
-      ${tile('open-sheet', 'users', 'Joueurs et partie', 'data-sheet="players" data-scope="game"')}
-      ${tile('open-sheet', 'palette', 'Couleurs', 'data-sheet="theme" data-scope="game"')}
+      ${tile('open-sheet', 'users', 'Joueurs', 'data-sheet="players" data-scope="game"')}
+      ${tile('open-sheet', 'palette', 'Affichage', 'data-sheet="theme" data-scope="game"')}
       ${tile('share', 'share', 'Partager le score')}
       ${tile('show-history', 'history', 'Historique')}
       ${game.deals.length ? tile('rematch-ask', 'replay', 'Revanche') : ''}
@@ -1141,35 +1166,55 @@ function sheetMenu() {
     <button class="btn ghost wide" data-action="close-sheet">Fermer</button>`;
 }
 
+// Rules hub: one row per group of variants. A row opens that group alone.
 function sheetVariants() {
   const scope = ui.sheetScope === 'game' && data.current ? 'game' : 'setup';
   const config = scopeObj(scope);
+  const groups = ruleGroups(scope, config);
+  const active = groups.find((group) => group.id === ui.ruleGroup);
+
+  if (active) {
+    return `
+      <h2>${active.title}</h2>
+      ${active.body}
+      <button class="btn primary wide" data-action="close-rule-group">${icon('back')} Retour aux règles</button>`;
+  }
+
+  const rows = groups
+    .map(
+      (group) => `
+      <button class="setting-row" data-action="open-rule-group" data-group="${group.id}">
+        <span><strong>${group.title}</strong><small>${group.summary}</small></span>${icon('chevronRight')}
+      </button>`,
+    )
+    .join('');
+
   return `
-    <h2>Variantes de comptage</h2>
-    <p class="hint">${
-      scope === 'game' ? 'Les scores de la partie en cours sont recalculés tout de suite.' : 'Elles sont retenues pour vos prochaines parties.'
-    }</p>
-    ${variantsControl(scope, config)}
-    <button class="btn wide" data-action="show-rules" data-scope="${scope}">${icon('book')} Voir le récap des règles</button>
+    <h2>Règles</h2>
+    ${groups.length === 1 ? groups[0].body : `<div class="setting-list">${rows}</div>`}
+    <div class="row-2">
+      <button class="btn" data-action="show-rules" data-scope="${scope}">${icon('book')} Récap</button>
+      <button class="btn" data-action="reset-rules" data-scope="${scope}">${icon('replay')} Par défaut</button>
+    </div>
     <button class="btn primary wide" data-action="close-sheet">Terminé</button>`;
 }
 
 function sheetPlayers() {
-  const game = data.current;
+  const scope = ui.sheetScope === 'game' && data.current ? 'game' : 'setup';
+  const config = scopeObj(scope);
   return `
-    <h2>Joueurs et partie</h2>
-    <section class="group"><h3>Partie en</h3>${targetControl('game', game)}</section>
-    <section class="group"><h3>Équipes</h3>${namesControl('game', game)}</section>
-    <section class="group"><h3>Donneur de la prochaine donne</h3>${dealerControl('game', game)}</section>
-    <section class="group"><h3>Écran</h3>${switchRow('toggle-wakelock', '', 'Garder l\'écran allumé', data.prefs.wakeLock, 'Pendant la partie')}</section>
+    <h2>Joueurs</h2>
+    <p class="hint">Facultatif. Les partenaires sont face à face : Nord avec Sud, Est avec Ouest.</p>
+    ${namesControl(scope, config)}
+    <section class="group"><h3>${scope === 'game' ? 'Donneur de la prochaine donne' : 'Premier donneur'}</h3>${dealerControl(scope, config)}</section>
     <button class="btn primary wide" data-action="close-sheet">Terminé</button>`;
 }
 
 function sheetTheme() {
   return `
-    <h2>Couleurs</h2>
-    <p class="hint">Choisissez l'ambiance de l'appli.</p>
+    <h2>Affichage</h2>
     ${themeControl()}
+    ${switchRow('toggle-wakelock', '', 'Garder l\'écran allumé', data.prefs.wakeLock, 'Pendant la partie')}
     <button class="btn primary wide" data-action="close-sheet">Terminé</button>`;
 }
 
@@ -1221,9 +1266,9 @@ function sheetEnd() {
 }
 
 function viewSheet() {
-  const needsGame = ['menu', 'players', 'deal', 'end'].includes(ui.sheet);
+  const needsGame = ['menu', 'deal', 'end'].includes(ui.sheet);
   if (needsGame && !data.current) return '';
-  const content = { menu: sheetMenu, variants: sheetVariants, players: sheetPlayers, theme: sheetTheme, deal: sheetDeal, end: sheetEnd }[ui.sheet]?.();
+  const content = { menu: sheetMenu, variants: sheetVariants, players: sheetPlayers, theme: sheetTheme, rule: sheetRule, deal: sheetDeal, end: sheetEnd }[ui.sheet]?.();
   if (!content) return '';
   return `
   <div class="backdrop${ui.sheet === 'end' ? ' centered' : ''}" data-action="close-sheet" data-self="1">
@@ -1398,11 +1443,26 @@ const actions = {
   'open-sheet'(d) {
     ui.sheet = d.sheet;
     ui.sheetScope = d.scope ?? 'game';
+    ui.ruleGroup = null;
     render();
   },
   'close-sheet'() {
     ui.sheet = null;
     ui.sheetData = null;
+    ui.ruleGroup = null;
+    render();
+  },
+  'open-rule'(d) {
+    ui.sheet = 'rule';
+    ui.sheetData = Number(d.index);
+    render();
+  },
+  'open-rule-group'(d) {
+    ui.ruleGroup = d.group;
+    render();
+  },
+  'close-rule-group'() {
+    ui.ruleGroup = null;
     render();
   },
   'new-deal'() {
@@ -1666,6 +1726,7 @@ document.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape') return;
   if (ui.confirm) actions['confirm-no']();
   else if (ui.wizard?.picker) actions['close-picker']();
+  else if (ui.sheet && ui.ruleGroup) actions['close-rule-group']();
   else if (ui.sheet) actions['close-sheet']();
   else if (ui.wizard) actions['wizard-close']();
 });
